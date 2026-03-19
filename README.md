@@ -154,6 +154,7 @@ Block Telnet (Port 23) — Inbound block rule on TCP port 23 across all profiles
 Allow HTTPS (Port 443) — Inbound allow rule on TCP port 443 across all profiles
 Allow svchost (Domain) — Program-based inbound rule allowing svchost.exe on the Domain profile only
 
+<img width="1299" height="234" alt="Screenshot 2026-03-19 163006" src="https://github.com/user-attachments/assets/7dcb75f2-1686-4540-80d4-b6d0c07bda83" />
 
 Step 14 — Configuring Firewall via Group Policy
 I opened the Group Policy Management Console (gpmc.msc), created a new GPO called Firewall Policy linked to lab.local, and configured it to enforce the firewall state as On with inbound connections blocked and outbound connections allowed across all profiles. This pushes the same firewall baseline to every domain-joined machine automatically.
