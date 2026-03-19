@@ -89,35 +89,174 @@ I opened System Properties on the client, changed the membership from Workgroup 
 
 ---
 
-## Troubleshooting
+Step 9 — Creating Organizational Units and User Accounts
+I opened Active Directory Users and Computers (dsa.msc) on the Domain Controller and created two Organizational Units under lab.local: Lab Users and Lab Computers. OUs act like folders to keep accounts organized instead of dumping everything into the default Users container.
+<img width="939" height="651" alt="Screenshot 2026-03-19 012934" src="https://github.com/user-attachments/assets/6228677d-efdf-41b4-88ae-036b962b9d4b" />
 
+I then created a user account for Jane Smith (jsmith) inside the Lab Users OU through the GUI, setting the password to ******** and disabling the password change requirement for lab purposes.
+<img width="540" height="462" alt="Screenshot 2026-03-19 013154" src="https://github.com/user-attachments/assets/8f33c885-68a9-4ac0-9503-bf8a19f3a7be" />
+
+To create additional users faster, I used a PowerShell script that creates accounts directly into the Lab Users OU:
+
+$OU = "OU=Lab Users,DC=lab,DC=local"
+
+$Password = ConvertTo-SecureString "*******" -AsPlainText -Force
+
+New-ADUser -Name "Alice Brown" -GivenName "Alice" -Surname "Brown" `
+
+  -SamAccountName "abrown" -UserPrincipalName "abrown@lab.local" `
+
+  -Path $OU -AccountPassword $Password -Enabled $true
+
+New-ADUser -Name "Tom Green" -GivenName "Tom" -Surname "Green" `
+
+  -SamAccountName "tgreen" -UserPrincipalName "tgreen@lab.local" `
+
+  -Path $OU -AccountPassword $Password -Enabled $true
+<img width="1892" height="950" alt="Screenshot 2026-03-19 014637" src="https://github.com/user-attachments/assets/2887649b-c798-41d0-830b-6a5c12804321" />
+
+
+Step 10 — Creating Security Groups and Assigning Members
+I created two Global Security Groups inside the Lab Users OU: IT-Admins and Staff-Users. I added jsmith to IT-Admins and abrown and tgreen to Staff-Users. In Active Directory, permissions are assigned to groups rather than individual users — this is the basis of Role-Based Access Control (RBAC).
+<img width="536" height="491" alt="Screenshot 2026-03-19 014942" src="https://github.com/user-attachments/assets/a386059a-27c0-4a0c-a23d-96fe607005c6" />
+<img width="529" height="490" alt="Screenshot 2026-03-19 015009" src="https://github.com/user-attachments/assets/29f86f2f-9291-42f4-ac34-a82cd9c67bc0" />
+
+
+Step 11 — Configuring Shared Folder Permissions
+On the Domain Controller I created a folder at C:\SharedDrive with two subfolders: IT-Only and AllStaff. I shared the parent folder and configured both Share Permissions and NTFS Permissions:
+<img width="1265" height="409" alt="Screenshot 2026-03-19 151205" src="https://github.com/user-attachments/assets/8ea61ba5-f609-4239-a82f-e23f812f1e00" />
+
+IT-Admins — Full Control (both Share and NTFS)
+Staff-Users — Read only (both Share and NTFS)
+<img width="451" height="553" alt="Screenshot 2026-03-19 151357" src="https://github.com/user-attachments/assets/f8c1336c-d16c-4429-bda4-e12aaad90923" />
+<img width="477" height="549" alt="Screenshot 2026-03-19 151653" src="https://github.com/user-attachments/assets/ab0bcb6c-f417-473a-9624-03b03ecb031a" />
+<img width="476" height="542" alt="Screenshot 2026-03-19 151743" src="https://github.com/user-attachments/assets/8b4c31b6-4b77-4031-9b21-41901c9d5d7a" />
+
+I removed the default Everyone entry from the share permissions so access is controlled entirely through group membership.
+
+
+Step 12 — Testing Permissions from the Client Machine
+I granted RDP access to both IT-Admins and Staff-Users on the client machine through Remote Desktop settings, then tested:
+
+Logged in as LAB\jsmith (IT-Admins member) and navigated to \\<DC-PRIVATE-IP>\SharedDrive. I was able to browse and create files — Full Control worked as expected.
+<img width="1126" height="664" alt="Screenshot 2026-03-19 160026" src="https://github.com/user-attachments/assets/59fbd40e-e61d-4d38-9b1e-495a6699edf9" />
+
+Logged in as LAB\tgreen (Staff-Users member) and tried the same. I could browse the folder but creating a file was denied — Read only access confirmed.
+<img width="1160" height="694" alt="Screenshot 2026-03-19 161030" src="https://github.com/user-attachments/assets/412b501f-9d66-4fee-952b-c842dee719f5" />
+
+
+Step 13 — Configuring Windows Firewall Rules
+I opened Windows Defender Firewall with Advanced Security (wf.msc) on the Domain Controller and verified that all the critical AD inbound rules were enabled (LDAP on TCP 389, Kerberos on TCP 88, DNS on TCP/UDP 53, RDP on TCP 3389).
+
+I then created custom rules:
+
+Block Telnet (Port 23) — Inbound block rule on TCP port 23 across all profiles
+Allow HTTPS (Port 443) — Inbound allow rule on TCP port 443 across all profiles
+Allow svchost (Domain) — Program-based inbound rule allowing svchost.exe on the Domain profile only
+<img width="1126" height="664" alt="Screenshot 2026-03-19 160026" src="https://github.com/user-attachments/assets/6b141428-08d0-4c14-a37a-5c4e9efb58ce" />
+
+
+Step 14 — Configuring Firewall via Group Policy
+I opened the Group Policy Management Console (gpmc.msc), created a new GPO called Firewall Policy linked to lab.local, and configured it to enforce the firewall state as On with inbound connections blocked and outbound connections allowed across all profiles. This pushes the same firewall baseline to every domain-joined machine automatically.
+<img width="489" height="555" alt="Screenshot 2026-03-19 163616" src="https://github.com/user-attachments/assets/3a1d2368-7111-48d1-9151-2da690346c27" />
+<img width="488" height="553" alt="Screenshot 2026-03-19 163632" src="https://github.com/user-attachments/assets/7c1b2f93-6c7e-4f40-b380-ec4989abcc84" />
+<img width="483" height="556" alt="Screenshot 2026-03-19 163646" src="https://github.com/user-attachments/assets/a1608e38-918b-4dcb-a6e8-e929ca5c8722" />
+
+
+Step 15 — Testing Firewall Rules from the Client
+I ran Test-NetConnection from the client machine against the DC's private IP on three ports:
+
+Port 23 (Telnet) — TcpTestSucceeded: False — Blocked by the custom firewall rule, working as intended.
+Port 389 (LDAP) — TcpTestSucceeded: True — AD's LDAP service is running and reachable.
+Port 443 (HTTPS) — TcpTestSucceeded: False — The firewall allows it, but no service is actually listening on that port. The rule is correct; there's just nothing behind it.
+<img width="812" height="631" alt="Screenshot 2026-03-19 170043" src="https://github.com/user-attachments/assets/cd485032-8c87-451d-9093-34fa5bbacdc7" />
+<img width="767" height="249" alt="Screenshot 2026-03-19 170137" src="https://github.com/user-attachments/assets/5cad5c01-e8ec-4582-8cde-a4afa7be3490" />
+
+
+Troubleshooting
 These are real issues I ran into while building this lab and how I fixed them.
+RDP failed with error code 0x204
+What happened: I could not connect to the client instance at all. Remote Desktop threw error 0x204 and refused to connect.
 
-### RDP failed with error code 0x204
+Why it happened: My public IP address had changed since I originally created the security group. My ISP changed it, so the inbound RDP rule on port 3389 was pointing to an outdated IP and blocking the connection entirely.
 
-**What happened:** I could not connect to the client instance at all. Remote Desktop threw error 0x204 and refused to connect.
+How I fixed it:
 
-**Why it happened:** My public IP address had changed since I originally created the security group. My ISP changed it, so the inbound RDP rule on port 3389 was pointing to an outdated IP and blocking the connection entirely.
-
-**How I fixed it:**
-1. Went to EC2 > Security Groups > AD-Lab-SG
-2. Clicked Edit inbound rules
-3. Changed the source on the RDP rule to My IP
-4. Saved and reconnected successfully
+Went to EC2 → Security Groups → AD-Lab-SG
+Clicked Edit inbound rules
+Changed the source on the RDP rule to My IP
+Saved and reconnected successfully
 
 I now update the My IP rule at the start of every lab session before trying to connect.
 
----
 
-### Domain join failed with a DNS timeout
+Domain join failed with a DNS timeout
+What happened: When I tried to join the client to lab.local, I got a DNS timeout error referencing _ldap._tcp.dc._msdcs.lab.local and the join failed completely.
 
-**What happened:** When I tried to join the client to `lab.local`, I got a DNS timeout error referencing `_ldap._tcp.dc._msdcs.lab.local` and the join failed completely.
+Why it happened: The security group was blocking all traffic between the two EC2 instances. Even though the DNS IP on the client was correctly pointing to the Domain Controller, the machines could not actually talk to each other. Active Directory relies on a range of ports including DNS (53), LDAP (389), Kerberos (88), RPC (135), and SMB (445), and none of that traffic was being allowed through.
 
-**Why it happened:** The security group was blocking all traffic between the two EC2 instances. Even though the DNS IP on the client was correctly pointing to the Domain Controller, the machines could not actually talk to each other. Active Directory relies on a range of ports including DNS (53), LDAP (389), Kerberos (88), RPC (135), and SMB (445), and none of that traffic was being allowed through.
+How I fixed it:
 
-**How I fixed it:**
-1. Went to EC2 > Security Groups > AD-Lab-SG
-2. Added a new inbound rule set to All traffic with the source set to `10.0.0.0/16`
-3. Saved the rule and retried the domain join, which succeeded
+Went to EC2 → Security Groups → AD-Lab-SG
+Added a new inbound rule set to All traffic with the source set to 10.0.0.0/16
+Saved the rule and retried the domain join, which succeeded
 
 Setting the source to the VPC range allowed both machines to communicate freely with each other while keeping the environment locked down from the internet.
+
+
+PowerShell user creation ran without errors but users didn't appear
+What happened: I ran the New-ADUser PowerShell script and got no errors, but the users didn't show up in the Lab Users OU in ADUC.
+
+Why it happened: The script can fail silently if the AD module hasn't fully loaded or if domain services are still settling after a recent reboot. The OU existed and the syntax was correct, but the first execution just didn't take.
+
+How I fixed it: I re-ran the same script a second time and the users were created successfully. To verify, I ran:
+
+Get-ADUser -Filter * -SearchBase "OU=Lab Users,DC=lab,DC=local" | Select Name, SamAccountName
+
+
+Could not log in as a domain user via RDP on the client machine
+What happened: After creating domain users, I tried to RDP into the client machine as LAB\jsmith but it wouldn't let me connect.
+
+Why it happened: By default, only the Administrator account has Remote Desktop access on domain machines. Regular domain users need to be explicitly granted permission.
+
+How I fixed it:
+
+RDP'd into the client as LAB\Administrator
+Went to System → Remote Desktop → Select users that can remotely access this PC
+Added the IT-Admins and Staff-Users groups
+Signed out and reconnected as LAB\jsmith successfully
+
+
+"Check Names" prompted for credentials when adding groups
+What happened: When I tried to add IT-Admins to the Remote Desktop users list and clicked Check Names, Windows asked me for credentials instead of resolving the name.
+
+Why it happened: Windows needed to verify the group name against Active Directory and the current session wasn't passing the domain credentials automatically for that lookup.
+
+How I fixed it: I entered LAB\Administrator with the Domain Controller's Administrator password. This is the domain-wide admin account so it works on any domain-joined machine. After entering the credentials, the group name resolved and underlined correctly.
+
+
+Firewall port tests failed for LDAP (port 389) from the client
+What happened: I ran Test-NetConnection from the client to test port 389 on the DC and it returned TcpTestSucceeded: False, even though the LDAP firewall rule was enabled on the Domain Controller.
+
+Why it happened: The AWS Security Group AD-Lab-SG only had an inbound rule for port 3389 (RDP). All other traffic between the two EC2 instances was being blocked at the AWS level before it ever reached Windows Firewall.
+
+How I fixed it:
+
+Went to EC2 → Security Groups → AD-Lab-SG
+Edited inbound rules and added a new rule: Type set to All traffic, Source set to 10.0.0.0/16
+Saved the rule and re-ran the test — port 389 returned True
+
+This allows all internal VPC communication between the DC and client while keeping the environment locked down from the internet.
+
+
+Port 443 test showed False even after creating an allow rule
+What happened: I created a Windows Firewall rule to allow inbound HTTPS on port 443, but Test-NetConnection still showed TcpTestSucceeded: False.
+
+Why it happened: A firewall allow rule only opens the port — it doesn't start a service. Since there was no web server or any application listening on port 443, there was nothing to accept the connection.
+
+How I confirmed it: I ran the following on the DC and it returned nothing, confirming no service was bound to port 443:
+
+Get-NetTCPConnection -LocalPort 443 -ErrorAction SilentlyContinue
+
+The firewall rule itself was working correctly. The test failed because the port was open but empty.
+
