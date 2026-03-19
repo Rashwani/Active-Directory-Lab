@@ -153,7 +153,6 @@ I then created custom rules:
 Block Telnet (Port 23) — Inbound block rule on TCP port 23 across all profiles
 Allow HTTPS (Port 443) — Inbound allow rule on TCP port 443 across all profiles
 Allow svchost (Domain) — Program-based inbound rule allowing svchost.exe on the Domain profile only
-<img width="1126" height="664" alt="Screenshot 2026-03-19 160026" src="https://github.com/user-attachments/assets/6b141428-08d0-4c14-a37a-5c4e9efb58ce" />
 
 
 Step 14 — Configuring Firewall via Group Policy
