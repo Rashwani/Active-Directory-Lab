@@ -133,13 +133,14 @@ Staff-Users — Read only (both Share and NTFS)
 <img width="476" height="542" alt="Screenshot 2026-03-19 151743" src="https://github.com/user-attachments/assets/8b4c31b6-4b77-4031-9b21-41901c9d5d7a" />
 
 I removed the default Everyone entry from the share permissions so access is controlled entirely through group membership.
+<img width="1397" height="735" alt="Screenshot 2026-03-23 190052" src="https://github.com/user-attachments/assets/5100c3e5-e671-4554-a1ad-4771b0bdfe71" />
 
 
 Step 12 — Testing Permissions from the Client Machine
 I granted RDP access to both IT-Admins and Staff-Users on the client machine through Remote Desktop settings, then tested:
 
 Logged in as LAB\jsmith (IT-Admins member) and navigated to \\<DC-PRIVATE-IP>\SharedDrive. I was able to browse and create files — Full Control worked as expected.
-<img width="1126" height="664" alt="Screenshot 2026-03-19 160026" src="https://github.com/user-attachments/assets/59fbd40e-e61d-4d38-9b1e-495a6699edf9" />
+
 
 Logged in as LAB\tgreen (Staff-Users member) and tried the same. I could browse the folder but creating a file was denied — Read only access confirmed.
 <img width="1160" height="694" alt="Screenshot 2026-03-19 161030" src="https://github.com/user-attachments/assets/412b501f-9d66-4fee-952b-c842dee719f5" />
